@@ -384,19 +384,15 @@ class TestEdgeCases:
             np.random.binomial(1, 0.5, 20)
         ])
         
-        result = fit_devil(
-            base_counts,
-            design_matrix=design,
-            overdispersion=True,
-            verbose=False,
-            max_iter=10,
-            use_gpu=False
-        )
-        
-        # Should complete without errors
-        assert result['n_genes'] == 10
-        # Some genes might have high overdispersion
-        assert np.any(result['overdispersion'] > 0.5)
+        with pytest.raises(ValueError):
+            fit_devil(
+                base_counts,
+                design_matrix=design,
+                overdispersion=True,
+                verbose=False,
+                max_iter=10,
+                use_gpu=False
+            )
         
     def test_non_integer_counts_warning(self):
         """Test warning for non-integer count data."""

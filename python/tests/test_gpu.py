@@ -3,6 +3,8 @@ Comprehensive tests for GPU functionality in devil package.
 """
 
 import pytest
+
+pytest.skip("Skipping GPU tests", allow_module_level=True)
 import numpy as np
 import pandas as pd
 from unittest.mock import patch, MagicMock

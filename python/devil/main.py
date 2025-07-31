@@ -72,6 +72,21 @@ def fit_devil(
     Returns:
         Dictionary containing fitted model parameters and metadata.
     """
+    if int(max_iter) != max_iter:
+        raise TypeError("max_iter must be an integer")
+    if max_iter <= 0:
+        raise ValueError("max_iter must be a positive integer")
+    if tolerance <= 0:
+        raise ValueError("tolerance must be positive")
+    if n_jobs is not None:
+        if int(n_jobs) != n_jobs:
+            raise TypeError("n_jobs must be an integer")
+        if n_jobs == 0 or n_jobs < -1:
+            raise ValueError("n_jobs must be -1 or a positive integer")
+    if offset <= 0:
+        raise ValueError("offset must be positive")
+    if init_overdispersion is not None and init_overdispersion < 0:
+        raise ValueError("init_overdispersion must be non-negative")
     # Handle input data
     count_matrix, gene_names, sample_names, obs_df = handle_input_data(
         adata, layer=layer

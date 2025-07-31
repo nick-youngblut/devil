@@ -89,7 +89,17 @@ def plot_volcano(
         plot_data = plot_data.dropna(subset=['lfc', pval_col])
     
     # Handle p-values of 0
+    if plot_data.empty:
+        if ax is None:
+            fig, ax = plt.subplots(figsize=figsize)
+        ax.set_xlabel(xlabel or r'$\log_2$ Fold Change')
+        ax.set_ylabel(ylabel or r'$-\log_{10}$ Adjusted P-value')
+        ax.set_title(title)
+        return ax
+
     min_nonzero_pval = plot_data[plot_data[pval_col] > 0][pval_col].min()
+    if not np.isfinite(min_nonzero_pval):
+        min_nonzero_pval = 1e-300
     n_zero_pval = (plot_data[pval_col] == 0).sum()
     if n_zero_pval > 0:
         warnings.warn(
@@ -112,7 +122,9 @@ def plot_volcano(
         (plot_data['significant_pval']) & (plot_data['significant_lfc'])
     ]
     categories = ['Non-significant', 'LFC only', 'P-value only', 'Both']
-    plot_data['category'] = np.select(conditions, categories)
+    plot_data['category'] = np.select(
+        conditions, categories, default="Non-significant"
+    )
     
     # Set default colors if not provided
     if colors is None:
@@ -180,7 +192,11 @@ def plot_volcano(
     ax.legend(loc='best', frameon=True, framealpha=0.9)
     
     # Center x-axis at 0
-    max_abs_lfc = np.abs(plot_data['lfc']).max()
+    finite_lfc = np.abs(plot_data['lfc'].replace([np.inf, -np.inf], np.nan))
+    finite_lfc = finite_lfc.dropna()
+    max_abs_lfc = finite_lfc.max() if len(finite_lfc) > 0 else 1.0
+    if not np.isfinite(max_abs_lfc) or max_abs_lfc == 0:
+        max_abs_lfc = 1.0
     ax.set_xlim(-max_abs_lfc * 1.1, max_abs_lfc * 1.1)
     
     # Add grid

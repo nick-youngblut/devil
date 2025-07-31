@@ -3,6 +3,7 @@
 from typing import Union, Optional, Tuple, Any
 import numpy as np
 import pandas as pd
+import warnings
 from scipy import sparse
 import anndata as ad
 
@@ -106,7 +107,6 @@ def validate_inputs(
     
     # Check for non-integer counts (warning only)
     if not np.allclose(count_matrix, count_matrix.astype(int)):
-        import warnings
         warnings.warn(
             "Count matrix contains non-integer values. "
             "This may indicate normalized data rather than raw counts."
@@ -115,9 +115,10 @@ def validate_inputs(
     # Check design matrix rank
     rank = np.linalg.matrix_rank(design_matrix)
     if rank < n_features:
-        raise ValueError(
+        warnings.warn(
             f"Design matrix is rank deficient: rank {rank} < {n_features} features. "
-            "Consider removing collinear variables."
+            "Consider removing collinear variables.",
+            RuntimeWarning,
         )
 
 

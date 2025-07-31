@@ -98,25 +98,31 @@ def fit_dispersion(
                                  do_cox_reid_adjustment)
     
     # Optimize using Newton-Raphson via scipy
-    result = optimize.minimize(
-        neg_log_likelihood,
-        x0=np.log(init_disp),
-        method='Newton-CG',
-        jac=score,
-        hess=hessian,
-        options={'maxiter': max_iter, 'xtol': tolerance}
-    )
+    try:
+        result = optimize.minimize(
+            neg_log_likelihood,
+            x0=np.log(init_disp),
+            method='Newton-CG',
+            jac=score,
+            hess=hessian,
+            options={'maxiter': max_iter, 'xtol': tolerance}
+        )
+    except Exception:
+        return init_disp
     
     # If optimization failed, try without Cox-Reid adjustment
     if not result.success and do_cox_reid_adjustment:
-        result = optimize.minimize(
-            lambda x: -compute_nb_log_likelihood(y, mu, np.exp(x), 
-                                               design_matrix, False),
-            x0=np.log(init_disp),
-            method='L-BFGS-B',
-            bounds=[(np.log(1e-8), np.log(1e8))],
-            options={'maxiter': max_iter, 'ftol': tolerance}
-        )
+        try:
+            result = optimize.minimize(
+                lambda x: -compute_nb_log_likelihood(y, mu, np.exp(x),
+                                                   design_matrix, False),
+                x0=np.log(init_disp),
+                method='L-BFGS-B',
+                bounds=[(np.log(1e-8), np.log(1e8))],
+                options={'maxiter': max_iter, 'ftol': tolerance}
+            )
+        except Exception:
+            return init_disp
     
     return np.exp(result.x[0]) if result.success else init_disp
 
@@ -169,28 +175,10 @@ def compute_nb_score(
     do_cox_reid: bool
 ) -> float:
     """Compute score function (derivative of log-likelihood)."""
-    alpha = 1.0 / theta
-    
-    # Basic score
-    score = np.sum(
-        digamma(y + alpha) - digamma(alpha) + 
-        np.log(alpha / (alpha + mu)) +
-        (y - mu) / (alpha + mu)
-    ) * alpha
-    
-    # Cox-Reid adjustment term
-    if do_cox_reid:
-        W = mu / (1 + mu * theta)
-        dW = -mu**2 * theta / (1 + mu * theta)**2
-        
-        XWX = design_matrix.T @ (W[:, np.newaxis] * design_matrix)
-        XdWX = design_matrix.T @ (dW[:, np.newaxis] * design_matrix)
-        
-        XWX_inv = np.linalg.inv(XWX + np.eye(XWX.shape[0]) * 1e-8)
-        cr_term = -0.5 * np.trace(XWX_inv @ XdWX)
-        score += cr_term * theta
-    
-    return score
+    eps = 1e-6
+    ll1 = compute_nb_log_likelihood(y, mu, theta - eps, design_matrix, do_cox_reid)
+    ll2 = compute_nb_log_likelihood(y, mu, theta + eps, design_matrix, do_cox_reid)
+    return (ll2 - ll1) / (2 * eps)
 
 
 def compute_nb_hessian(
@@ -201,21 +189,8 @@ def compute_nb_hessian(
     do_cox_reid: bool
 ) -> float:
     """Compute Hessian (second derivative of log-likelihood)."""
-    alpha = 1.0 / theta
-    
-    # Basic Hessian computation
-    trigamma_term = np.sum(polygamma(1, y + alpha) - polygamma(1, alpha))
-    
-    # Additional terms
-    hess = -2 * alpha * (
-        np.sum(digamma(y + alpha) - digamma(alpha) + 
-               np.log(alpha / (alpha + mu))) +
-        alpha * trigamma_term
-    )
-    
-    # Cox-Reid adjustment
-    if do_cox_reid:
-        # Complex computation - simplified here
-        hess *= 0.99  # Correction factor from glmGamPoi
-    
-    return hess
+    eps = 1e-6
+    ll1 = compute_nb_log_likelihood(y, mu, theta - eps, design_matrix, do_cox_reid)
+    ll2 = compute_nb_log_likelihood(y, mu, theta + eps, design_matrix, do_cox_reid)
+    ll0 = compute_nb_log_likelihood(y, mu, theta, design_matrix, do_cox_reid)
+    return (ll1 - 2 * ll0 + ll2) / (eps ** 2)

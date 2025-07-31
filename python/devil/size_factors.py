@@ -29,7 +29,10 @@ def calculate_size_factors(
         ValueError: If any sample has all zeros.
     """
     n_genes, n_samples = count_matrix.shape
-    
+
+    if n_genes <= 1:
+        return np.ones(n_samples)
+
     if method == "total_count":
         # Simple total count normalization
         size_factors = np.sum(count_matrix, axis=0).astype(float)
@@ -64,8 +67,9 @@ def calculate_size_factors(
     # Check for all-zero samples using column sums
     zero_samples = np.sum(count_matrix, axis=0) == 0
     if np.all(zero_samples):
+        idx = np.where(zero_samples)[0]
         raise ValueError(
-            f"Samples {np.where(zero_samples)[0]} have zero total counts. "
+            f"Samples {idx} have zero total counts. "
             "Please filter out empty samples."
         )
     

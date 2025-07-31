@@ -80,7 +80,7 @@ class TestCompleteWorkflow:
         size_factors = np.random.lognormal(0, 0.4, n_samples)
         
         # Generate count data
-        mu = size_factors[np.newaxis, :] * np.exp(design_true @ beta_true.T)
+        mu = np.exp(beta_true @ design_true.T) * size_factors[np.newaxis, :]
         overdispersion = np.random.gamma(3, 0.3, n_genes)
         
         count_matrix = np.zeros((n_genes, n_samples))
